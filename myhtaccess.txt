@@ -1,0 +1,26 @@
+<IfModule mod_rewrite.c>
+RewriteEngine On
+SetEnvIf Authorization .+ HTTP_AUTHORIZATION=$0
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+#RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [L]
+
+</IfModule>
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Headers: "Authorization"
+</IfModule>
+<IfModule mod_env.c>
+    SetEnv CI_ENV development
+</IfModule>
+#<IfModule mod_env.c>
+#    SetEnv CI_ENV testing
+#</IfModule>
+#<IfModule mod_env.c>
+#    SetEnv CI_ENV production
+#</IfModule>
