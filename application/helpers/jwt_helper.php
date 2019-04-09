@@ -15,6 +15,7 @@ class JWT
 
 	public static function otp($timestamp, $auth)
 	{
-		return str_shuffle($timestamp.str_replace("=", "", $auth));
+		$authBersih = preg_replace('/[^\\pL\d_]+/u', '', $auth);
+		return str_shuffle($timestamp.str_replace("=/\s+/", "", $authBersih));
 	}
 }

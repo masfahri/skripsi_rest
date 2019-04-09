@@ -79,6 +79,8 @@ class Auth extends REST_Controller {
                             'ip_addresses' =>  $this->input->ip_address()    
                         );
                         $token = $this->M_user->create('token', $dataToken);
+                        $return['otp'] = $auth['otp'];
+
                         /** PROSES SEND MAIL */
                         // $this->sendMail($output['token']);
                         /** END PROSES SEND MAIL */
@@ -107,10 +109,18 @@ class Auth extends REST_Controller {
             );
 
             $validation = JWT::validateTimestamp(Crypt::decrypt_($decrypt));
-            if ($validation) {
-
+            if (!empty($token) && $otp == $validation->otp) {
+                if (!empty($otp) && $validation) {
+                    $data = array('status' => 'pending');
+                    $user = $this->M_user->where('users', $validation->email, 'email');
+                    if ($user != false) {
+                        $key = array('user_id' => $user['id']);
+                        $del = $this->M_user->delete('token', $key);
+                    }
+                }
                 return $this->response($validation, REST_Controller::HTTP_OK);
             }
+            
             return false; 
 
         }
