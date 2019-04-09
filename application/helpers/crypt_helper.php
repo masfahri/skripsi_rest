@@ -27,15 +27,24 @@ class Crypt
         $hasil = "";
         $d = 221;
         $n = 611;
-        $safe = Urlsafe::urlsafeB64Decode($data['token']);
-        $cipher = unserialize(gzuncompress(stripslashes(base64_decode(strtr($safe, '-_,', '+/=')))));
-
-        $teks = explode(".",$cipher);
-        foreach($teks as $nilai){
-            //rumus enkripsi <pesan>=<enkripsi>^<d>mod<n>
-            $hasil .= chr(gmp_strval(gmp_mod(gmp_pow($nilai,$d),$n)));
+        if (empty($data['token'])) {
+            return false;
+        }else{
+            $safe = Urlsafe::urlsafeB64Decode($data['token']);
+            $cipher = unserialize(gzuncompress(stripslashes(base64_decode(strtr($safe, '-_,', '+/=')))));
+    
+            $teks = explode(".",$cipher);
+            foreach($teks as $nilai){
+                //rumus enkripsi <pesan>=<enkripsi>^<d>mod<n>
+                $hasil .= chr(gmp_strval(gmp_mod(gmp_pow($nilai,$d),$n)));
+            }
+            return json_decode($hasil);
         }
-        return json_decode($hasil);
+    }
+
+    public static function randomString($length = 10, $data)
+    {
+        // $token = 
     }
 }
 

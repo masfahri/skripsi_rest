@@ -1,24 +1,20 @@
 <?php
-require APPPATH . '/helpers/urlsafe_helper.php';
 class JWT
 {
-    public static function encode($data)
+    public static function validateTimeStamp($data)
 	{
-		var_dump($data);die;
 		$CI =& get_instance();
-		// Segment 1
-		// $header = ;
-		// End Segment 1
-		// var_dump($header);die;
+		$round = count((array)$data); 
+		$output = [];
+		if ($data != false && (now() - $data->timestamp < ($CI->config->item('token_otp_time_out') * 6000))) {
+			
+            return $data;
+        }
+        return false;
+	}
 
-		$segments = array();
-		$segments[] = JWT::urlsafeB64Encode(JWT::jsonEncode($header));
-		$segments[] = JWT::urlsafeB64Encode(JWT::jsonEncode($payload));
-		$signing_input = implode('.', $segments);
-
-		$signature = JWT::sign($signing_input, $key, $algo);
-		$segments[] = JWT::urlsafeB64Encode($signature);
-
-		return implode('.', $segments);
+	public static function otp($timestamp, $auth)
+	{
+		return str_shuffle($timestamp.str_replace("=", "", $auth));
 	}
 }

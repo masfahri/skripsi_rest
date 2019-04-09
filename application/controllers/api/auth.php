@@ -8,9 +8,10 @@ class Auth extends REST_Controller {
 
         public function __construct($config = 'rest') {
             parent::__construct($config);
-            $this->load->model('user_model');
             $this->load->library('session');
+            $this->load->model('M_user');
             $this->load->helper('crypt');
+            $this->load->helper('jwt');
             date_default_timezone_set('Asia/Jakarta');
         }    
 
@@ -29,17 +30,17 @@ class Auth extends REST_Controller {
                         'required' => 'Email diperlukan',
                         'valid_email' => 'Email tidak Valid',
                         'is_unique' => 'Email sudah digunakan',
-                        'max_length[256]' => 'Email Kelebihan karakter',
+                        'max_length' => 'Email Kelebihan karakter',
                     ],
                 ],
                 [
                     'field' => 'nomor_hp',
                     'label' => 'Nomor',
-                    'rules' => 'required|is_unique[users.nomor_telf]|max_length[14]|numeric',
+                    'rules' => 'required|is_unique[users.nomor_hp]|max_length[14]|numeric',
                     'errors' => [
                         'required' => 'Nomor Telepon diperlukan',
                         'is_unique' => 'Nomor Telepon sudah digunakan',
-                        'max_length[14]' => 'Nomor Telepon Kelebihan karakter',
+                        'max_length' => 'Nomor Telepon Kelebihan karakter',
                         'numeric' => 'Nomor Telepon hanya angka!',
                     ],
                 ],
@@ -54,28 +55,68 @@ class Auth extends REST_Controller {
                 $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
             }else{
                 $auth = array();
-                $auth = explode(':', base64_decode(substr($this->input->server('HTTP_AUTHORIZATION'), 6)));
-                $auth[2] = now();
-                    // var_dump($this->input->server('HTTP_AUTHORIZATION'));die;
-                    // var_dump(base64_encode(serialize($auth)));
-                    // var_dump(($auth));die;
-                    // var_dump($serialize_b64);
-                    // var_dump(Urlsafe::urlsafeB64Encode(base64_encode(serialize($header))));
-                    // var_dump($unserialize);
-                    // var_dump(Urlsafe::urlsafeB64Encode($serialize_b64));die;
-                 $data = array(
-                     'headers' => $this->input->server('HTTP_AUTHORIZATION'),
-                     'date' => now()
-                 );
+                // $auth = explode(':', base64_decode(substr($this->input->server('HTTP_AUTHORIZATION'), 6)));
+                $auth['timestamp'] = now();
+                $auth['email'] = $tokenData['email'];
+                $str_shuffle = JWT::otp($auth['timestamp'], $this->input->server('HTTP_AUTHORIZATION'));
+                $auth['otp'] = substr($str_shuffle, 0, 4);  
+
                  $return['token'] = Crypt::encrypt_($auth);
                  
-                 $this->set_response($return, REST_Controller::HTTP_OK); 
+                 if (!empty($return['token']) && empty($return['otp'])) {
+                     if (empty($return['otp'])) {
+                        $dataUser = array(
+                            'email' => $tokenData['email'], 
+                            'nomor_hp' => $tokenData['nomor_hp'], 
+                            'created_at' => date('Y-m-d h:i:s'),
+                            'status' => 'not_aktif'
+                        );
+                        $id_user = $this->M_user->create('users', $dataUser);
+                        $dataToken = array(
+                            'user_id' => $id_user,
+                            'status' => 'aktivasi',
+                            'token' => $return['token'],
+                            'ip_addresses' =>  $this->input->ip_address()    
+                        );
+                        $token = $this->M_user->create('token', $dataToken);
+                        /** PROSES SEND MAIL */
+                        // $this->sendMail($output['token']);
+                        /** END PROSES SEND MAIL */
+                    }else{
+                        return false;
+                    }
+                    return $this->set_response($return, REST_Controller::HTTP_OK); 
+                 }else{
+                     return false;
+                 }
+                 
+                 
             }
+        }
+
+        public function otp_post()
+        {
+            $CI =& get_instance();
+            $otp = $this->post('otp');
+            $token = $this->post('token');
+
+            $decrypt = array(
+                'n'     => $CI->config->item('key_rsa'), 
+                'd'     => $CI->config->item('key_d'), 
+                'token' => $token
+            );
+
+            $validation = JWT::validateTimestamp(Crypt::decrypt_($decrypt));
+            if ($validation) {
+
+                return $this->response($validation, REST_Controller::HTTP_OK);
+            }
+            return false; 
+
         }
 
         public function logins_get()
         {
-            $CI =& get_instance();
             $token = $this->get('token');
 
             // var_dump(base64_encode(hash_hmac('SHA256', $token, 3, TRUE)));die;
@@ -92,7 +133,7 @@ class Auth extends REST_Controller {
                     'n' => $return[0], // Nilai N,
                     'e' => $return[1], // Nilai E,
                     'date' => $return[2], // Tanggal Expired,
-                    // 'alg' => $return[3] // Value Alg
+                    'email' => $return[3]
                 );
                 return $this->response($res); 
             }else{
