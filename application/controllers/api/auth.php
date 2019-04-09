@@ -2,6 +2,8 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 require APPPATH . '/libraries/REST_Controller.php';
+require APPPATH . '/helpers/jwt_helper.php';
+
 use Restserver\Libraries\REST_Controller;
 
 class Auth extends REST_Controller {
@@ -53,18 +55,12 @@ class Auth extends REST_Controller {
                 $output['error'] = $this->form_validation->error_array();
                 $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
             }else{
-                $header = [];
-                $auth = array();
-                // list($header['username'], $header['password']) = explode(':', base64_decode(substr($this->input->server('HTTP_AUTHORIZATION'), 6)));
+                $tokenData = array();
                 $auth = explode(':', base64_decode(substr($this->input->server('HTTP_AUTHORIZATION'), 6)));
-                $auth[2] = now();
-                // $auth[3] = "RSA";
-                // var_dump(json_encode(base64_encode($auth)));die;
-                $header['algo'] = 'RSA';
-                $header['key'] = $CI->config->item('key_d');
-                $serialize_b64 = strtr(base64_encode(addslashes(gzcompress(serialize($header),9))), '+/=', '-_,');
-                $unserialize = unserialize(gzuncompress(stripslashes(base64_decode(strtr($serialize_b64, '-_,', '+/=')))));
-
+                $tokenData[2] = now();
+                $tokenData[3] = $this->post('email');
+                $tokenData[4] = $this->post('nomor_hp');
+                
                     // var_dump($this->input->server('HTTP_AUTHORIZATION'));die;
                     // var_dump(base64_encode(serialize($auth)));
                     // var_dump(($auth));die;
@@ -72,13 +68,13 @@ class Auth extends REST_Controller {
                     // var_dump(Urlsafe::urlsafeB64Encode(base64_encode(serialize($header))));
                     // var_dump($unserialize);
                     // var_dump(Urlsafe::urlsafeB64Encode($serialize_b64));die;
-                
                  $data = array(
                      'headers' => $this->input->server('HTTP_AUTHORIZATION'),
                      'date' => now()
                  );
-                //  var_dump($data);die;
-                 $return['token'] = Crypt::encrypt_($auth);
+                //  $return['token'] = Crypt::encrypt_($auth);
+                 $return['token'] = JWT::encode($auth, $tokenData);
+                 $return['time'] = $tokenData[2];
                  
                  $this->set_response($return, REST_Controller::HTTP_OK); 
             }
@@ -96,19 +92,22 @@ class Auth extends REST_Controller {
                 'd'     => $CI->config->item('key_d'),
                 'token' => $token,
             );
-            $return = Crypt::decrypt_($data);
+            // $return = Crypt::decrypt_($data);
+            $return['token'] = JWT::decode($token);
+            // var_dump($return['token']->{2});die;
             // list($return->username, $return->password) = explode(':', base64_decode(substr($return->headers, 6)));
-            if ((now() - $return[2] < ($CI->config->item('token_otp_time_out') * 100))) {
+            // ITUNGAN 1 MENIT
+            if ((now() - $return['token']->{2} < ($CI->config->item('token_otp_time_out') * 600))) {
                 $res = array(
-                    'n' => $return[0], // Nilai N,
-                    'e' => $return[1], // Nilai E,
-                    'date' => $return[2], // Tanggal Expired,
-                    // 'alg' => $return[3] // Value Alg
+                    'email' => $return['token']->{3}, // Nilai N,
+                    'nomor_hp' => $return['token']->{4}, // Nilai E,
+                    'date' => $return['token']->{2}, // Tanggal Expired,
                 );
                 return $this->response($res); 
             }else{
                 return false;
             }
+            return $this->response($return); 
         }
 
         public function index_get(){
