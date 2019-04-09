@@ -2,8 +2,6 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 require APPPATH . '/libraries/REST_Controller.php';
-require APPPATH . '/helpers/jwt_helper.php';
-
 use Restserver\Libraries\REST_Controller;
 
 class Auth extends REST_Controller {
@@ -55,12 +53,9 @@ class Auth extends REST_Controller {
                 $output['error'] = $this->form_validation->error_array();
                 $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
             }else{
-                $tokenData = array();
+                $auth = array();
                 $auth = explode(':', base64_decode(substr($this->input->server('HTTP_AUTHORIZATION'), 6)));
-                $tokenData[2] = now();
-                $tokenData[3] = $this->post('email');
-                $tokenData[4] = $this->post('nomor_hp');
-                
+                $auth[2] = now();
                     // var_dump($this->input->server('HTTP_AUTHORIZATION'));die;
                     // var_dump(base64_encode(serialize($auth)));
                     // var_dump(($auth));die;
@@ -72,9 +67,7 @@ class Auth extends REST_Controller {
                      'headers' => $this->input->server('HTTP_AUTHORIZATION'),
                      'date' => now()
                  );
-                //  $return['token'] = Crypt::encrypt_($auth);
-                 $return['token'] = JWT::encode($auth, $tokenData);
-                 $return['time'] = $tokenData[2];
+                 $return['token'] = Crypt::encrypt_($auth);
                  
                  $this->set_response($return, REST_Controller::HTTP_OK); 
             }
@@ -92,22 +85,19 @@ class Auth extends REST_Controller {
                 'd'     => $CI->config->item('key_d'),
                 'token' => $token,
             );
-            // $return = Crypt::decrypt_($data);
-            $return['token'] = JWT::decode($token);
-            // var_dump($return['token']->{2});die;
+            $return = Crypt::decrypt_($data);
             // list($return->username, $return->password) = explode(':', base64_decode(substr($return->headers, 6)));
-            // ITUNGAN 1 MENIT
-            if ((now() - $return['token']->{2} < ($CI->config->item('token_otp_time_out') * 600))) {
+            if ((now() - $return[2] < ($CI->config->item('token_otp_time_out') * 100))) {
                 $res = array(
-                    'email' => $return['token']->{3}, // Nilai N,
-                    'nomor_hp' => $return['token']->{4}, // Nilai E,
-                    'date' => $return['token']->{2}, // Tanggal Expired,
+                    'n' => $return[0], // Nilai N,
+                    'e' => $return[1], // Nilai E,
+                    'date' => $return[2], // Tanggal Expired,
+                    // 'alg' => $return[3] // Value Alg
                 );
                 return $this->response($res); 
             }else{
                 return false;
             }
-            return $this->response($return); 
         }
 
         public function index_get(){
