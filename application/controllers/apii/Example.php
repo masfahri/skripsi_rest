@@ -36,6 +36,8 @@ class Example extends REST_Controller {
 
     public function users_get()
     {
+        header('Access-Control-Allow-Origin: *');
+
         // Users from a data store e.g. database
         $users = [
             ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'fact' => 'Loves coding'],

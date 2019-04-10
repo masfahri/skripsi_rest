@@ -13,9 +13,9 @@ class M_user extends CI_Model {
         return $this->db->insert_id();
     }
 
-    public function update($table, $data, $key, $field)
+    public function update($table, $key, $data)
     {
-        $this->db->where($field, $key);
+        $this->db->where($key);
         return $this->db->update($table, $data);
     }
 
@@ -25,9 +25,9 @@ class M_user extends CI_Model {
         return $this->db->delete($table);
     }
 
-    public function where($table, $key, $field)
+    public function where($table, $key)
     {
-        $this->db->where($field, $key);
+        $this->db->where($key);
         $query = $this->db->get($table);
         if( $query->num_rows() > 0 ){
             if( $key !== "" ){
@@ -37,6 +37,18 @@ class M_user extends CI_Model {
             }
             
         }else return null;
+    }
+
+    function _cekToken($key)
+    {
+        $this->db->where('token',$key);
+        $query = $this->db->get('token');
+        if ($query->num_rows() > 0){
+            return true;
+        }
+        else{
+            return false;
+        }
     }
 
 
