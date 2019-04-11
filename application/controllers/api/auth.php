@@ -10,6 +10,7 @@ use SMSGatewayMe\Client\Configuration;
 use SMSGatewayMe\Client\Api\MessageApi;
 use SMSGatewayMe\Client\Model\SendMessageRequest;
 
+header('Access-Control-Allow-Origin: *');
 class Auth extends REST_Controller {
 
         public function __construct($config = 'rest') {
@@ -57,7 +58,7 @@ class Auth extends REST_Controller {
             $this->form_validation->set_rules($config);
 
             if($this->form_validation->run()==FALSE){
-                $output['error'] = $this->form_validation->error_array();
+                $output = $this->form_validation->error_array();
                 $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
             }else{
                 $auth = array();
@@ -108,6 +109,7 @@ class Auth extends REST_Controller {
             $CI =& get_instance();
             $otp = $this->post('otp');
             $token = $this->post('token');
+            $action = $this->post('action');
 
             $decrypt = array(
                 'n'     => $CI->config->item('key_rsa'), 
@@ -135,7 +137,94 @@ class Auth extends REST_Controller {
                         'min_length' => 'OTP Kekurangan karakter',
                     ],
                 ],
+            ];
+
+            $data = $this->post();
+            $this->form_validation->set_data($data);
+            $this->form_validation->set_rules($config);
+
+            if ($action == null) {
+                if($this->form_validation->run()==FALSE){
+                    $output['error'] = $this->form_validation->error_array();
+                    return $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+                }else{
+                    $validation = array();
+                    $validation['JWT'] = JWT::validateTimestamp(Crypt::decrypt_($decrypt), 60);
+                    // var_dump($validation['JWT']->timestamp);die;
                 
+                    if (empty($validation['JWT']->otp)) {
+                        $key = array('token' => $token);
+                        $dataUser = $this->M_user->where('token', $key);
+                        
+                         $delToken = $this->M_user->delete('token', array('user_id' => $dataUser['user_id']));
+                         $delUsers = $this->M_user->delete('users', array('id' => $dataUser['user_id']));
+                    }else{
+                        if (!empty($token) && $otp == $validation['JWT']->otp) {
+                            if (!empty($otp) && $validation['JWT']) {
+                                $statusUser = array('status' => 'pending');
+                                $whereUser = array('email' => $validation['JWT']->email);
+                                $user = $this->M_user->where('users', $whereUser);
+                                if ($user != false) {
+                                    $key = array('user_id' => $user['id']);
+                                    $token = $this->M_user->where('token', $key);
+                                    // var_dump($token);die;
+                                    switch ($token['status']) {
+                                        case 'aktivasi':
+                                            // $this->email($token->token);
+                                            $user = $this->M_user->update('users', $whereUser, $statusUser);
+                                            $validation['status'] = 'Berhasil Aktivasi Akun';
+                                            // $del = $this->M_user->delete('token', $key);
+                                            break;
+        
+                                        case 'pembayaran':
+                                            // $del = $this->M_user->delete('token', $key);
+                                            $validation['status'] = 'Berhasil Melakukan Pembayaran';
+                                            break;    
+        
+                                        case 'lupa_password':
+                                            $validation['status'] = 'Berhasil Ubah Password';
+                                            // $del = $this->M_user->delete('token', $key);
+                                            break;    
+                                        
+                                        default:
+                                            # code...
+                                            break;
+                                    }
+                                    
+                                }
+                            }
+                            return $this->response($validation, REST_Controller::HTTP_OK);
+                        }
+                    }
+                }
+            }else{
+                // VALIDASI KETIKA LOGIN
+                $decryptData = array('token' => $token);
+                $decrypt = Crypt::decrypt_($decryptData);
+                $validate = JWT::validateTimestamp(Crypt::decrypt_($decryptData), $decrypt->timestamp);
+                if ($validate) {
+                    return $this->response($decrypt, REST_Controller::HTTP_OK);
+                }
+                return false; 
+            }
+            return false; 
+        }
+
+        public function login_post()
+        {
+            $CI =& get_instance();
+            $config = [
+                [
+                    'field' => 'nomor_hp',
+                    'label' => 'Nomor HP',
+                    'rules' => 'required|callback_isUser|max_length[13]|min_length[10]',
+                    'errors' => [
+                        'required' => '%s diperlukan',
+                        'isUser' => '%s Tidak Terdaftar',
+                        'max_length' => '%s Kelebihan Karakter',
+                        'min_length' => '%s Kekurangan Karakter',
+                    ],
+                ],
             ];
 
             $data = $this->post();
@@ -143,51 +232,27 @@ class Auth extends REST_Controller {
             $this->form_validation->set_rules($config);
 
             if($this->form_validation->run()==FALSE){
-                $output['error'] = $this->form_validation->error_array();
-                return $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
-            }else{
-                $validation = array();
-                $validation['JWT'] = JWT::validateTimestamp(Crypt::decrypt_($decrypt));
-                // var_dump($validation['JWT']->timestamp);die;
-            
-                if (!empty($token) && $otp == $validation['JWT']->otp) {
-                    if (!empty($otp) && $validation['JWT']) {
-                        $statusUser = array('status' => 'pending');
-                        $whereUser = array('email' => $validation['JWT']->email);
-                        $user = $this->M_user->where('users', $whereUser);
-                        if ($user != false) {
-                            $key = array('user_id' => $user['id']);
-                            $token = $this->M_user->where('token', $key);
-                            // var_dump($token);die;
-                            switch ($token['status']) {
-                                case 'aktivasi':
-                                    // $this->email($token->token);
-                                    $user = $this->M_user->update('users', $whereUser, $statusUser);
-                                    $validation['status'] = 'Berhasil Aktivasi Akun';
-                                    // $del = $this->M_user->delete('token', $key);
-                                    break;
-
-                                case 'pembayaran':
-                                    // $del = $this->M_user->delete('token', $key);
-                                    $validation['status'] = 'Berhasil Melakukan Pembayaran';
-                                    break;    
-
-                                case 'lupa_password':
-                                    $validation['status'] = 'Berhasil Ubah Password';
-                                    // $del = $this->M_user->delete('token', $key);
-                                    break;    
-                                
-                                default:
-                                    # code...
-                                    break;
-                            }
-                            
-                        }
-                    }
-                    return $this->response($validation, REST_Controller::HTTP_OK);
-                }
+                $output = $this->form_validation->error_array();
+                $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
             }
-            return false; 
+
+            $userData = $this->M_user->_login('users', $this->post('nomor_hp'));
+            if (!empty($userData)) {
+                $tokenData['nomor'] = $userData['nomor_hp'];
+                $tokenData['email'] = $userData['email'];
+                $tokenData['status'] = $userData['status'];
+                $tokenData['timestamp'] = now();
+
+                $return = $this->cekRole($tokenData);
+                $return['action'] = 'login';
+            }else{
+                $return = 'User tidak ditemukan';
+            }
+            $data = array(
+                'n' => $CI->config->item('key_rs'),
+                'e' => $CI->config->item('key_e'),
+             );
+             return $this->set_response($return, REST_Controller::HTTP_OK);
         }
 
         public function logins_get()
@@ -203,7 +268,7 @@ class Auth extends REST_Controller {
             );
             $return = Crypt::decrypt_($data);
             // list($return->username, $return->password) = explode(':', base64_decode(substr($return->headers, 6)));
-            if ((now() - $return[2] < ($CI->config->item('token_otp_time_out') * 100))) {
+            if ((now() - $return[2] < ($CI->config->item('token_otp_time_out') * 259200))) {
                 $res = array(
                     'n' => $return[0], // Nilai N,
                     'e' => $return[1], // Nilai E,
@@ -216,15 +281,43 @@ class Auth extends REST_Controller {
             }
         }
 
+        public function isUser($key)
+        {
+            $cek = $this->M_user->_login('users', $key);
+            if($cek) return true;
+
+        }
+
         public function token_exists($key)
         {
            $cek = $this->M_user->_cekToken($key);
            if ($cek) return true;
         }
 
-        public function cekRole($email)
+        public function cekRole($token)
         {
-            # code...
+            // $validate = Crypt::decrypt_($token);
+            switch ($token['status']) {
+                case 'admin':
+                    $encrypt = Crypt::encrypt_($token);
+                    $return['token'] = $encrypt;
+                    $return['timeout'] = 172800;
+                    $str_shuffle = JWT::otp($return['timeout'], $this->input->server('HTTP_AUTHORIZATION'));
+                    $return['otp'] = substr($str_shuffle, 0, 4);  
+                    break;
+                case 'aktif':
+                    $encrypt = Crypt::encrypt_($token);
+                    $return['token'] = $encrypt;
+                    $return['timeout'] = 2592000;
+                    $str_shuffle = JWT::otp($return['timeout'], $this->input->server('HTTP_AUTHORIZATION'));
+                    $return['otp'] = substr($str_shuffle, 0, 4);  
+                    break;
+                
+                default:
+                    # code...
+                    break;
+            }
+            return $return;
         }
 
         public function sms($otp, $nomor_hp)

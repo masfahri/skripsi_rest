@@ -51,6 +51,18 @@ class M_user extends CI_Model {
         }
     }
 
+    public function _login($table, $params)
+    {
+        $this->db->from($table);
+        if( !$params ){
+            $this->db->where_not_in('status', 'admin');
+        }
+        $this->db->where('nomor_hp', $params);
+        $query = $this->db->get();
+        if( $query->num_rows() > 0 )return $query->row_array();
+        else FALSE;
+    }
+
 
 
 

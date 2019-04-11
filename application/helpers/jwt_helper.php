@@ -1,13 +1,12 @@
 <?php
 class JWT
 {
-    public static function validateTimeStamp($data)
+    public static function validateTimeStamp($data, $timeout)
 	{
 		$CI =& get_instance();
 		$round = count((array)$data); 
 		$output = [];
-		if ($data != false && (now() - $data->timestamp < ($CI->config->item('token_otp_time_out') * 6000))) {
-			
+		if ($data != false && (now() - $data->timestamp < ($CI->config->item('token_otp_time_out') * $timeout))) {
             return $data;
         }
         return false;
