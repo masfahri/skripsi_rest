@@ -30,13 +30,8 @@ class Admin extends REST_Controller {
         $CI =& get_instance();
         $token = $this->post('token');
         $kategori = $this->post('kategori');
-        $decrypt = array(
-            'n'     => $CI->config->item('key_rsa'), 
-            'd'     => $CI->config->item('key_d'), 
-            'token' => $token
-        );
         $validation = array();
-        $validation['JWT'] = JWT::validateTimestamp(Crypt::decrypt_($decrypt), 10000000);
+        $validation['JWT'] = $this->_decrypt($token);
         if ($validation['JWT']->status == 'admin') {
             $data = array('nama_kategori' => $kategori);
             $cekKategori = $this->M_user->count('kategori_produk', $data);
@@ -137,11 +132,31 @@ class Admin extends REST_Controller {
         
         $config = [
             [
-                'field' => 'vendor_id',
-                'label' => 'Vendor',
-                'rules' => 'required|max_length[256]',
+                'field' => 'nama_produk',
+                'label' => 'Nama Produk',
+                'rules' => 'trim|required|max_length[256]',
                 'errors' => [
                     'required' => '%s Diperlukan',
+                    'max_length' => '%s Kelebihan karakter',
+                ],
+            ],
+            [
+                'field' => 'vendor_id',
+                'label' => 'Vendor',
+                'rules' => 'required|max_length[256]|callback_cek_vendor',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                    'cek_vendor' => '%s Tidak Ada',
+                    'max_length' => '%s Kelebihan karakter',
+                ],
+            ],
+            [
+                'field' => 'kategori',
+                'label' => 'Kategori',
+                'rules' => 'required|max_length[256]|callback_cek_kategori',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                    'cek_kategori' => '%s Tidak Ada',
                     'max_length' => '%s Kelebihan karakter',
                 ],
             ],
@@ -187,6 +202,34 @@ class Admin extends REST_Controller {
     }
 
 
+
+
+
+
+
+    
+
+    public function cek_vendor($key)
+    {
+        $data = array('id' => $key);
+        $cek = $this->M_user->_isNotExists($data, 'vendor');
+        if($cek){
+            return false;
+        } else{
+            return true;
+        }
+    }
+
+    public function cek_kategori($key)
+    {
+        $data = array('id' => $key);
+        $cek = $this->M_user->_isNotExists($data, 'kategori_produk');
+        if($cek){
+            return false;
+        } else{
+            return true;
+        }
+    }
 
 
     public function base64($params)

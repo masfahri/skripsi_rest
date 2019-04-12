@@ -50,6 +50,18 @@ class M_user extends CI_Model {
         }else return null;
     }
 
+    public function _isNotExists($key, $table)
+    {
+        $this->db->where($key);
+        $query = $this->db->get($table);
+        if ($query->num_rows() == 0){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
     function _cekToken($key)
     {
         $this->db->where('token',$key);
