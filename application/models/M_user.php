@@ -25,6 +25,17 @@ class M_user extends CI_Model {
         return $this->db->delete($table);
     }
 
+    public function count($table, $key)
+    {
+        $this->db->where($key);
+        $qry = $this->db->get($table);
+        if ($qry->num_rows() > 0) {
+            return true;
+        }else{
+            return false;
+        }
+    }
+
     public function where($table, $key)
     {
         $this->db->where($key);
