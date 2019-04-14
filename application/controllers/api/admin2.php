@@ -25,28 +25,6 @@ class Admin extends REST_Controller {
         date_default_timezone_set('Asia/Jakarta');
     }
 
-    public function kategori_post()
-    {
-        $CI =& get_instance();
-        $token = $this->post('token');
-        $kategori = $this->post('kategori');
-        $validation = array();
-        $validation['JWT'] = $this->_decrypt($token);
-        if ($validation['JWT']->status == 'admin') {
-            $data = array('nama_kategori' => $kategori);
-            $cekKategori = $this->M_user->count('kategori_produk', $data);
-            if ($cekKategori) {
-                $validation['message'] = 'Kategori Sudah Ada!';
-            }else{
-                $insertKategori = $this->M_user->create('kategori_produk', $data);
-                $validation['message'] = 'Sukses Masukan Kategori';
-            }
-        }else{
-            return false;
-        }
-        return $this->response($validation, REST_Controller::HTTP_OK);
-    }
-
     public function vendor_post()
     {
         $token = $this->post('token');
