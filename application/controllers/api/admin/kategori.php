@@ -59,7 +59,7 @@ class Kategori extends REST_Controller {
             'token' => $token
         );
         $validation = array();
-        $validation['JWT'] = JWT::validateTimestamp(Crypt::decrypt_($decrypt), 10000000);
+        $validation['JWT'] = JWT::validateTimestamp(Crypt::decrypt_($decrypt), 172800);
         return $validation['JWT'];
     }
 

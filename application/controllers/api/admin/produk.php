@@ -43,9 +43,10 @@ class Produk extends REST_Controller {
                 [
                     'field' => 'nama_produk',
                     'label' => 'Nama Produk',
-                    'rules' => 'trim|required|max_length[256]',
+                    'rules' => 'trim|required|max_length[256]|is_unique[produk.nama_produk]',
                     'errors' => [
                         'required' => '%s Diperlukan',
+                        'is_unique' => '%s Sudah Ada',
                         'max_length' => '%s Kelebihan karakter',
                     ],
                 ],
@@ -109,7 +110,8 @@ class Produk extends REST_Controller {
                 return $this->set_response($validation, REST_Controller::HTTP_OK); 
             }
         } else {
-            return false;
+            $return['message'] = 'Harap Masukan Gambar Cover!';
+            return $this->set_response($return, REST_Controller::HTTP_BAD_REQUEST); 
         }
         
     }
@@ -328,19 +330,19 @@ class Produk extends REST_Controller {
     }
 
     function maximumCheck($num)
-{
-    if ($num > 1000)
     {
-        $this->form_validation->set_message(
-                        'your_number_field',
-                        'The %s field must be less than 24'
-                    );
-        return FALSE;
+        if ($num > 100)
+        {
+            $this->form_validation->set_message(
+                            'your_number_field',
+                            'The %s field must be less than 24'
+                        );
+            return FALSE;
+        }
+        else
+        {
+            return TRUE;
+        }
     }
-    else
-    {
-        return TRUE;
-    }
-}
     
 }
