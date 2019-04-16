@@ -11,6 +11,7 @@ use SMSGatewayMe\Client\Api\MessageApi;
 use SMSGatewayMe\Client\Model\SendMessageRequest;
 
 header('Access-Control-Allow-Origin: *');
+
 class Vendor extends REST_Controller {
 
     public function __construct($config='rest') 
@@ -23,6 +24,156 @@ class Vendor extends REST_Controller {
         $this->load->model('M_vendor');
         
         date_default_timezone_set('Asia/Jakarta');
+    }
+
+    public function index_get()
+    {
+        $token = $this->get('token');
+        $vendor_id = $this->get('vendor_id');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+        ];
+
+        $data = $this->get();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $output = $this->form_validation->error_array();
+            $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                $data = array('id' => $vendor_id);
+                if (empty($vendor_id)) {
+                    $return['vendor'] = $this->M_vendor->where('vendor', $data);
+                }else{
+                    $return['vendor'] = array($this->M_vendor->where('vendor', $data));
+
+                }
+            }
+        }
+        return $this->set_response($return, REST_Controller::HTTP_OK); 
+    }
+
+    public function edit_post()
+    {
+        $token = $this->post('token');
+        $email = $this->post('email');
+        $nama_vendor = $this->post('nama_vendor');
+        $id = $this->post('id');
+        $nomor_hp = $this->post('nomor_hp');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+            [
+                'field' => 'email',
+                'label' => 'Email',
+                'rules' => 'valid_email|required',
+                'errors' => [
+                    'valid_email' => '%s Tidak Valid!',
+                    'required' => '%s Dibutuhkan!',
+                ],
+            ],
+            [
+                'field' => 'nomor_hp',
+                'label' => 'Nomor Handphone',
+                'rules' => 'numeric|required',
+                'errors' => [
+                    'numeric' => '%s Tidak Valid!',
+                    'required' => '%s Dibutuhkan!',
+                ],
+            ],
+        ];
+
+        $data = $this->post();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $output = $this->form_validation->error_array();
+            $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                $data = array(
+                    'email' => $email, 
+                    'nomor_hp' => $nomor_hp, 
+                    'nama_vendor' => $nama_vendor, 
+                );
+                $key = array('id' => $id);
+                $update = $this->M_vendor->update('vendor', $key, $data);
+                if ($update) {
+                    $output['message'] = 'sukses update';
+                    $code = REST_Controller::HTTP_OK;
+                }else{
+                    $output['message'] = 'gagal update';
+                    $code = REST_Controller::HTTP_BAD_REQUEST;
+                }
+            }else{
+                return false;
+            }
+            $this->set_response($output, $code);
+        }
+
+    }
+
+    public function delete_post()
+    {
+        $token = $this->post('token');
+        $id = $this->post('id');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+        ];
+        
+        $data = $this->post();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $output = $this->form_validation->error_array();
+            $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                
+                $key = array('id' => $id);
+                $update = $this->M_vendor->delete('vendor', $key);
+                if ($update) {
+                    $output['message'] = 'sukses delete';
+                    $code = REST_Controller::HTTP_OK;
+                }else{
+                    $output['message'] = 'gagal delete';
+                    $code = REST_Controller::HTTP_BAD_REQUEST;
+                }
+            }else{
+                return false;
+            }
+            $this->set_response($output, $code);
+        }
     }
 
     public function index_post()
