@@ -21,8 +21,53 @@ class Produk extends REST_Controller {
         $this->load->helper('jwt');
         $this->load->model('M_user');
         $this->load->model('M_vendor');
+        $this->load->model('Crud');
         
         date_default_timezone_set('Asia/Jakarta');
+    }
+
+    public function index_get()
+    {
+        $token = $this->get('token');
+        $id = $this->get('id');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+        ];
+
+        $data = $this->get();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $return = $this->form_validation->error_array();
+            $this->set_response($return, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                $data = array('id' => $id);
+                if (empty($id)) {
+                    $select = array('produk.id', 'nama_vendor', 'nama_produk', 'img_cover', 'slug', 'vendor_id');
+                    $table = array('vendor', 'produk');
+                    $join = 'produk.vendor_id = vendor.id';
+                    $return['produk'] = $this->Crud->join($select, $table, $join);
+                    // var_dump($return['produk']);die;
+                }else{
+                    $select = array('produk.id', 'nama_vendor', 'nama_produk', 'img_cover', 'slug', 'vendor_id', 'deskripsi_produk');
+                    $table = array('produk', 'vendor', 'detail_produk');
+                    $join = array('produk.vendor_id = vendor.id', 'produk.id = detail_produk.produk_id');
+                    $return['produk'] = $this->Crud->join2table($select, $table, $join, $data);
+                }
+            }
+        }
+        return $this->set_response($return, REST_Controller::HTTP_OK); 
     }
 
     public function index_post()
@@ -114,6 +159,49 @@ class Produk extends REST_Controller {
             return $this->set_response($return, REST_Controller::HTTP_BAD_REQUEST); 
         }
         
+    }
+
+    public function delete_post()
+    {
+        $token = $this->post('token');
+        $id = $this->post('id');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+        ];
+        
+        $data = $this->post();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $output = $this->form_validation->error_array();
+            $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                
+                $key = array('id' => $id);
+                $update = $this->M_vendor->delete('produk', $key);
+                if ($update) {
+                    $output['message'] = 'sukses delete';
+                    $code = REST_Controller::HTTP_OK;
+                }else{
+                    $output['message'] = 'gagal delete';
+                    $code = REST_Controller::HTTP_BAD_REQUEST;
+                }
+            }else{
+                return false;
+            }
+            $this->set_response($output, $code);
+        }
     }
 
     public function detail_post()
@@ -213,6 +301,46 @@ class Produk extends REST_Controller {
         // }
         // die;
     }
+
+    public function detail_get()
+    {
+        $token = $this->get('token');
+        $vendor_id = $this->get('vendor_id');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+        ];
+
+        $data = $this->get();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $output = $this->form_validation->error_array();
+            $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                $data = array('id' => $vendor_id);
+                if (empty($vendor_id)) {
+                    $return['vendor'] = $this->M_vendor->where('vendor', $data);
+                }else{
+                    $return['vendor'] = array($this->M_vendor->where('vendor', $data));
+
+                }
+            }
+        }
+        return $this->set_response($return, REST_Controller::HTTP_OK); 
+    }
+
+    
 
     public function _doUpload($params, $namaProduk)
     {

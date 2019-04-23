@@ -34,6 +34,31 @@ class Crud extends CI_Model {
         return $this->db->delete($table);
     }
 
+    public function join($select, $table, $join, $where=null)
+    {
+        $this->db->select($select);
+        $this->db->from($table[0]);
+        if (!$where == null) {
+            $this->db->where($where);
+        }
+        $this->db->join($table[1], $join);
+        $qry = $this->db->get();
+        return $qry->result_array();
+    }
+
+    public function join2table($select, $table, $join, $where=null)
+    {
+        $this->db->select($select);
+        $this->db->from($table[0]);
+        if (!$where == null) {
+            $this->db->where($where);
+        }
+        $this->db->join($table[1], $join[0]);
+        $this->db->join($table[2], $join[1]);
+        $qry = $this->db->get();
+        return $qry->result_array();
+    }
+
 }
 
 ?>

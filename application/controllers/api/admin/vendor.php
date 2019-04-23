@@ -22,6 +22,7 @@ class Vendor extends REST_Controller {
         $this->load->helper('jwt');
         $this->load->model('M_user');
         $this->load->model('M_vendor');
+        $this->load->model('Crud');
         
         date_default_timezone_set('Asia/Jakarta');
     }
@@ -58,6 +59,46 @@ class Vendor extends REST_Controller {
                 }else{
                     $return['vendor'] = array($this->M_vendor->where('vendor', $data));
 
+                }
+            }
+        }
+        return $this->set_response($return, REST_Controller::HTTP_OK); 
+    }
+
+    public function detail_get()
+    {
+        $token = $this->get('token');
+        $vendor_id = $this->get('vendor_id');
+
+        $config = [
+            [
+                'field' => 'token',
+                'label' => 'Token',
+                'rules' => 'required',
+                'errors' => [
+                    'required' => '%s Diperlukan',
+                ],
+            ],
+        ];
+
+        $data = $this->get();
+        $this->form_validation->set_data($data);
+        $this->form_validation->set_rules($config);
+        
+        if($this->form_validation->run()==FALSE){
+            $output = $this->form_validation->error_array();
+            $this->set_response($output, REST_Controller::HTTP_BAD_REQUEST);
+        }else{
+            $validation['JWT'] = $this->_decrypt($token);
+            if ($validation['JWT']->status == 'admin') {
+                $data = array('vendor.id' => $vendor_id);
+                if (empty($vendor_id)) {
+                    $return['vendor'] = $this->M_vendor->where('vendor', $data);
+                }else{
+                    $select = array('count(*) jml_prdk, produk.*, vendor.*');
+                    $table = array('produk', 'vendor');
+                    $join = 'produk.vendor_id = vendor.id';
+                    $return['vendor'] = $this->Crud->join($select, $table, $join ,$data);
                 }
             }
         }
